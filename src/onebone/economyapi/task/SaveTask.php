@@ -30,7 +30,7 @@ class SaveTask extends Task {
 		$this->plugin = $plugin;
 	}
 
-	public function onRun(int $currentTick){
+	public function onRun(): void{
 		$this->plugin->saveAll();
 	}
 }

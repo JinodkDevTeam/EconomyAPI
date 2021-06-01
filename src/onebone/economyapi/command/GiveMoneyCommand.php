@@ -5,7 +5,7 @@ namespace onebone\economyapi\command;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\utils\TextFormat;
-use pocketmine\Player;
+use pocketmine\player\Player;
 
 use onebone\economyapi\EconomyAPI;
 
@@ -35,7 +35,7 @@ class GiveMoneyCommand extends Command{
 			return true;
 		}
 
-		if(($p = $this->plugin->getServer()->getPlayer($player)) instanceof Player){
+		if(($p = $this->plugin->getServer()->getPlayerByPrefix($player)) instanceof Player){
 			$player = $p->getName();
 		}
 

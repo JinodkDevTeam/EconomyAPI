@@ -20,11 +20,13 @@
 
 namespace onebone\economyapi;
 
-use pocketmine\Player;
+use pocketmine\event\Event;
+use pocketmine\player\Player;
 use pocketmine\plugin\PluginBase;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerJoinEvent;
 use pocketmine\utils\Config;
+use pocketmine\utils\Internet;
 use pocketmine\utils\Utils;
 use pocketmine\utils\TextFormat;
 
@@ -39,7 +41,8 @@ use onebone\economyapi\event\account\CreateAccountEvent;
 use onebone\economyapi\task\SaveTask;
 
 class EconomyAPI extends PluginBase implements Listener{
-	const API_VERSION = 3;
+
+	const API_VERSION = 4;
 	const PACKAGE_VERSION = "5.7";
 
 	const RET_NO_ACCOUNT = -3;
@@ -51,9 +54,9 @@ class EconomyAPI extends PluginBase implements Listener{
 	private static $instance = null;
 
 	/** @var Provider */
-	private $provider;
+	private Provider $provider;
 
-	private $langList = [
+	private array $langList = [
 		"def" => "Default",
 		"user-define" => "User Defined",
 		"ch" => "简体中文",
@@ -69,7 +72,7 @@ class EconomyAPI extends PluginBase implements Listener{
 		"uk" => "Українська",
 		"zh" => "繁體中文",
 	];
-	private $lang = [], $playerLang = [];
+	private array $lang = [], $playerLang = [];
 
 	/**
 	 * @param string			$command
@@ -142,8 +145,8 @@ class EconomyAPI extends PluginBase implements Listener{
 
 		if(!$this->provider->accountExists($player)){
 			$defaultMoney = ($defaultMoney === false) ? $this->getConfig()->get("default-money") : $defaultMoney;
-
-			$this->getServer()->getPluginManager()->callEvent($ev = new CreateAccountEvent($this, $player, $defaultMoney, "none"));
+			$ev = $ev = new CreateAccountEvent($this, $player, $defaultMoney, "none");
+			$ev->call();
 			if(!$ev->isCancelled() or $force === true){
 				$this->provider->createAccount($player, $ev->getDefaultMoney());
 			}
@@ -192,10 +195,12 @@ class EconomyAPI extends PluginBase implements Listener{
 				return self::RET_INVALID;
 			}
 
-			$this->getServer()->getPluginManager()->callEvent($ev = new SetMoneyEvent($this, $player, $amount, $issuer));
+			$ev = new SetMoneyEvent($this, $player, $amount, $issuer);
+			$ev->call();
 			if(!$ev->isCancelled() or $force === true){
 				$this->provider->setMoney($player, $amount);
-				$this->getServer()->getPluginManager()->callEvent(new MoneyChangedEvent($this, $player, $amount, $issuer));
+				$ev2 = new MoneyChangedEvent($this, $player, $amount, $issuer);
+				$ev2->call();
 				return self::RET_SUCCESS;
 			}
 			return self::RET_CANCELLED;
@@ -225,10 +230,12 @@ class EconomyAPI extends PluginBase implements Listener{
 				return self::RET_INVALID;
 			}
 
-			$this->getServer()->getPluginManager()->callEvent($ev = new AddMoneyEvent($this, $player, $amount, $issuer));
+			$ev = new AddMoneyEvent($this, $player, $amount, $issuer);
+			$ev->call();
 			if(!$ev->isCancelled() or $force === true){
 				$this->provider->addMoney($player, $amount);
-				$this->getServer()->getPluginManager()->callEvent(new MoneyChangedEvent($this, $player, $amount + $money, $issuer));
+				$ev2 = new MoneyChangedEvent($this, $player, $amount + $money, $issuer);
+				$ev2->call();
 				return self::RET_SUCCESS;
 			}
 			return self::RET_CANCELLED;
@@ -258,10 +265,12 @@ class EconomyAPI extends PluginBase implements Listener{
 				return self::RET_INVALID;
 			}
 
-			$this->getServer()->getPluginManager()->callEvent($ev = new ReduceMoneyEvent($this, $player, $amount, $issuer));
+			$ev = new ReduceMoneyEvent($this, $player, $amount, $issuer);
+			$ev->call();
 			if(!$ev->isCancelled() or $force === true){
 				$this->provider->reduceMoney($player, $amount);
-				$this->getServer()->getPluginManager()->callEvent(new MoneyChangedEvent($this, $player, $money - $amount, $issuer));
+				$ev2 = new MoneyChangedEvent($this, $player, $money - $amount, $issuer);
+				$ev2->call();
 				return self::RET_SUCCESS;
 			}
 			return self::RET_CANCELLED;
@@ -276,11 +285,11 @@ class EconomyAPI extends PluginBase implements Listener{
 		return self::$instance;
 	}
 
-	public function onLoad(){
+	public function onLoad(): void{
 		self::$instance = $this;
 	}
 
-	public function onEnable(){
+	public function onEnable(): void{
 		/*
 		 * 디폴트 설정 파일을 먼저 생성하게 되면 데이터 폴더 파일이 자동 생성되므로
 		 * 'Failed to open stream: No such file or directory' 경고 메시지를 없앨 수 있습니다
@@ -324,7 +333,7 @@ class EconomyAPI extends PluginBase implements Listener{
 		}
 	}
 
-	public function onDisable(){
+	public function onDisable(): void{
 		$this->saveAll();
 
 		if($this->provider instanceof Provider){
@@ -360,9 +369,9 @@ class EconomyAPI extends PluginBase implements Listener{
 	}
 
 	private function initialize(){
-		if($this->getConfig()->get("check-update")){
+		/*if($this->getConfig()->get("check-update")){
 			$this->checkUpdate();
-		}
+		}*/
 		switch(strtolower($this->getConfig()->get("provider"))){
 			case "yaml":
 			$this->provider = new YamlProvider($this);
@@ -386,9 +395,9 @@ class EconomyAPI extends PluginBase implements Listener{
 			$this->provider->open();
 	}
 
-	private function checkUpdate(){
+	/*private function checkUpdate(){
 		try{
-			$info = json_decode(Utils::getURL($this->getConfig()->get("update-host")."?version=".$this->getDescription()->getVersion()."&package_version=".self::PACKAGE_VERSION), true);
+			$info = json_decode(Internet::getURL($this->getConfig()->get("update-host")."?version=".$this->getDescription()->getVersion()."&package_version=".self::PACKAGE_VERSION), true);
 			if(!isset($info["status"]) or $info["status"] !== true){
 				$this->getLogger()->notice("Something went wrong on update server.");
 				return false;
@@ -402,7 +411,7 @@ class EconomyAPI extends PluginBase implements Listener{
 			$this->getLogger()->logException($e);
 			return false;
 		}
-	}
+	}*/
 
 	private function registerCommands(){
 		$map = $this->getServer()->getCommandMap();

@@ -35,7 +35,7 @@ class MySQLPingTask extends Task{
 		$this->mysql = $mysql;
 	}
 
-	public function onRun(int $currentTick){
+	public function onRun(): void {
 		if(!$this->mysql->ping()){
 			$this->plugin->openProvider();
 		}

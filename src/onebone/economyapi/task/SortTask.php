@@ -22,7 +22,7 @@ namespace onebone\economyapi\task;
 
 use pocketmine\scheduler\AsyncTask;
 use pocketmine\Server;
-use pocketmine\Player;
+use pocketmine\player\Player;
 
 use onebone\economyapi\EconomyAPI;
 
@@ -50,7 +50,7 @@ class SortTask extends AsyncTask{
 		$this->banList = $banList;
 	}
 
-	public function onRun(){
+	public function onRun(): void{
 		$this->topList = serialize((array)$this->getTopList());
 	}
 
@@ -81,8 +81,8 @@ class SortTask extends AsyncTask{
 		return $ret;
 	}
 
-	public function onCompletion(Server $server){
-		if($this->sender === "CONSOLE" or ($player = $server->getPlayerExact($this->sender)) instanceof Player){ // TODO: Rcon
+	public function onCompletion(): void{
+		if($this->sender === "CONSOLE" or ($player = Server::getInstance()->getPlayerExact($this->sender)) instanceof Player){ // TODO: Rcon
 			$plugin = EconomyAPI::getInstance();
 
 			$output = ($plugin->getMessage("topmoney-tag", [$this->page, $this->max], $this->sender)."\n");
